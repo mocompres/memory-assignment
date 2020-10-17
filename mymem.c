@@ -52,17 +52,21 @@ void initmem(strategies strategy, size_t sz)
 
 	/* all implementations will need an actual block of memory to use */
 	mySize = sz;
-
+	printf("Freeing memory\n");
 	if (myMemory != NULL) free(myMemory); /* in case this is not the first time initmem2 is called */
-
+	
 	/* TODO: release any other memory you were using fo,,r bookkeeping when doing a re-initialization! */
-	struct memoryList *trav;
-	for (trav = head; trav->next != NULL; trav=trav->next) {
-		free(trav->last);
+	if (head != NULL)
+	{
+		struct memoryList *trav;
+		for (trav = head; trav->next != NULL; trav=trav->next) {
+			free(trav->last);
+		}
+		free(trav);
 	}
-	free(trav);
+	
 		
-
+	printf("Setup memory\n");
 	myMemory = malloc(sz);
 	
 	/* TODO: Initialize memory management structure. */
@@ -99,7 +103,7 @@ void *mymalloc(size_t requested)
 	  case Worst:
 	            return NULL;
 	  case Next:
-
+				printf("Allocating memory\n");
 	  			// find the node
 				trav = next;
 
@@ -136,8 +140,7 @@ void *mymalloc(size_t requested)
 /* Frees a block of memory previously allocated by mymalloc. */
 void myfree(void* block)
 {
-	
-
+	printf("Deallocating memory\n");
 	return;
 }
 
@@ -186,13 +189,12 @@ int mem_largest_free()
 {
 	int size = 0;
 	int largestSize = 0;
-	char isPrevFree = 0; // free
 
 	struct memoryList *trav;
-	for (trav = head; trav->next != NULL; trav=trav->next) {
-		if (trav->alloc == 0 && isPrevFree == 0) {
-			if (isPrevFree == 0)
+	for (trav = head; trav->next != NULL; trav = trav->next) {
+		if (trav->alloc == 0) {
 			size += trav->size;
+		
 			if (size > largestSize)
 			{
 				largestSize = size;
@@ -200,22 +202,33 @@ int mem_largest_free()
 		}
 		else {
 			size = 0;
-			isPrevFree = 1;
 		}
 			
 	}
 	
-	return cnt;
+	return largestSize;
 }
 
 /* Number of free blocks smaller than "size" bytes. */
 int mem_small_free(int size)
 {
-	return 0;
+	int cnt = 0;
+
+	struct memoryList *trav;
+	for (trav = head; trav->next != NULL; trav = trav->next) {
+		
+		if (trav->size < size)
+		{
+			cnt++;
+		}
+	}
+
+	return cnt;
 }       
 
 char mem_is_alloc(void *ptr)
 {
+	
         return 0;
 }
 
