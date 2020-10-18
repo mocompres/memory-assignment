@@ -88,7 +88,7 @@ void initmem(strategies strategy, size_t sz)
 
 void *mymalloc(size_t requested)
 {
-	struct memoryList *trav; // = next;
+	struct memoryList *trav;
 
 	assert((int)myStrategy > 0);
 	
@@ -115,25 +115,29 @@ void *mymalloc(size_t requested)
 						trav = trav->next;
 				}  			
 					
-				struct memoryList *rtnNode = next; 
-				// make new node
-				struct memoryList *temp = (struct memoryList*) malloc(sizeof(struct memoryList));
-				temp->last = trav;
-				temp->next = trav->next;
-				temp->size = trav->size - requested;
-				temp->alloc = 0;
-				temp->ptr = trav->ptr + requested;
-				// setup next node with pre trav->next->last = temp
+				//struct memoryList *rtnNode = next; 
 
-				// setting up the allocated node
-				trav->next = temp;
-				trav->size = requested;
+				if (trav->size > requested) {
+				// make new node
+					struct memoryList *temp = (struct memoryList*) malloc(sizeof(struct memoryList));
+					temp->last = trav;
+					temp->next = trav->next;
+					temp->size = trav->size - requested;
+					temp->alloc = 0;
+					temp->ptr = trav->ptr + requested;
+					// setup next node with pre trav->next->last = temp
+					
+					// setting up the allocated node
+					trav->next = temp;
+					trav->size = requested;
+					next = trav->next;
+				}
+
 				trav->alloc = 1;
-				next = trav->next;
-				return rtnNode->ptr;
-	            return NULL;
+				
+				//return rtnNode->ptr;
 	  }
-	return NULL;
+	return trav->ptr;
 }
 
 
@@ -141,6 +145,17 @@ void *mymalloc(size_t requested)
 void myfree(void* block)
 {
 	printf("Deallocating memory\n");
+
+	struct memoryList *trav;
+	for (trav = head; trav != NULL; trav=trav->next) { 
+		if (trav->ptr == block)
+		{
+			trav->alloc = 0;
+			return;
+		}
+		
+	}
+
 	return;
 }
 
@@ -153,24 +168,18 @@ void myfree(void* block)
 /* Get the number of contiguous areas of free space in memory. */
 int mem_holes()
 {
+	
 	int cnt = 0;
-	int largestCnt = 0;
 
 	struct memoryList *trav;
-	for (trav = head; trav->next != NULL; trav=trav->next) {
+	for (trav = head; trav != NULL; trav=trav->next) {
 		if (trav->alloc == 0) {
 			cnt++;
 		}
-		else {
-			cnt = 0;
-		}
-
-		if (cnt > largestCnt) {
-			largestCnt = cnt;
-		}
 	}
 
-	return largestCnt;
+	return cnt;
+	
 }
 
 /* Get the number of bytes allocated */
@@ -179,7 +188,7 @@ int mem_allocated()
 	int cnt = 0;
 
 	struct memoryList *trav;
-	for (trav = head; trav->next != NULL; trav=trav->next) {
+	for (trav = head; trav != NULL; trav=trav->next) {
 		if (trav->alloc == 1) 
 			cnt += trav->size;
 	}
@@ -193,7 +202,7 @@ int mem_free()
 	int cnt = 0;
 
 	struct memoryList *trav;
-	for (trav = head; trav->next != NULL; trav=trav->next) {
+	for (trav = head; trav != NULL; trav=trav->next) {
 		if (trav->alloc == 0) 
 			cnt++;
 	}
@@ -208,7 +217,7 @@ int mem_largest_free()
 	int largestSize = 0;
 
 	struct memoryList *trav;
-	for (trav = head; trav->next != NULL; trav = trav->next) {
+	for (trav = head; trav != NULL; trav = trav->next) {
 		if (trav->alloc == 0) {
 			size += trav->size;
 		
@@ -232,9 +241,9 @@ int mem_small_free(int size)
 	int cnt = 0;
 
 	struct memoryList *trav;
-	for (trav = head; trav->next != NULL; trav = trav->next) {
+	for (trav = head; trav != NULL; trav = trav->next) {
 		
-		if (trav->size < size)
+		if (trav->alloc == 0 && trav->size < size)
 		{
 			cnt++;
 		}
@@ -245,7 +254,13 @@ int mem_small_free(int size)
 
 char mem_is_alloc(void *ptr)
 {
-	
+	struct memoryList *trav;
+	for (trav = head; trav != NULL; trav=trav->next) { 
+		if (trav->ptr == ptr)
+		{
+			return trav->alloc;
+		}
+	}
         return 0;
 }
 
@@ -320,6 +335,11 @@ strategies strategyFromString(char * strategy)
 /* Use this function to print out the current contents of memory. */
 void print_memory()
 {
+	struct memoryList *trav;
+	for (trav = head; trav != NULL; trav=trav->next) { 
+		printf("%s->", (trav->alloc == 0) ? "Free" : "Alloced");
+	}
+	printf("\n");
 	return;
 }
 
@@ -349,7 +369,7 @@ void try_mymem(int argc, char **argv) {
 	
 	/* A simple example.  
 	   Each algorithm should produce a different layout. */
-	
+	/* test 1
 	initmem(strat,500);
 	
 	a = mymalloc(100);
@@ -362,5 +382,24 @@ void try_mymem(int argc, char **argv) {
 	
 	print_memory();
 	print_memory_status();
-	
+	*/
+
+	// test 3
+
+		void* lastPointer = NULL;
+		initmem(strat,100);
+		for (int i = 0; i < 100; i++)
+		{
+			void* pointer = mymalloc(1);
+			if ( i > 0 && pointer != (lastPointer+1) )
+			{
+				//printf("Allocation with %s was not sequential at %i; expected %p, actual %p\n", strategy_name(strategy), i,lastPointer+1,pointer);
+				return 1;
+			}
+			lastPointer = pointer;
+		}
+
+
+	print_memory();
+	print_memory_status();
 }
