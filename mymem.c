@@ -153,7 +153,24 @@ void myfree(void* block)
 /* Get the number of contiguous areas of free space in memory. */
 int mem_holes()
 {
-	return 0;
+	int cnt = 0;
+	int largestCnt = 0;
+
+	struct memoryList *trav;
+	for (trav = head; trav->next != NULL; trav=trav->next) {
+		if (trav->alloc == 0) {
+			cnt++;
+		}
+		else {
+			cnt = 0;
+		}
+
+		if (cnt > largestCnt) {
+			largestCnt = cnt;
+		}
+	}
+
+	return largestCnt;
 }
 
 /* Get the number of bytes allocated */
@@ -164,7 +181,7 @@ int mem_allocated()
 	struct memoryList *trav;
 	for (trav = head; trav->next != NULL; trav=trav->next) {
 		if (trav->alloc == 1) 
-			cnt++;
+			cnt += trav->size;
 	}
 	
 	return cnt;
