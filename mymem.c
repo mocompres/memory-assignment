@@ -130,9 +130,14 @@ void *mymalloc(size_t requested)
 					// setting up the allocated node
 					trav->next = temp;
 					trav->size = requested;
-					next = trav->next;
 				}
-
+				
+				// setting next
+				if (trav->next != NULL)
+					next = trav->next;
+				else 
+					next = head;
+					
 				trav->alloc = 1;
 				
 				//return rtnNode->ptr;
@@ -150,12 +155,38 @@ void myfree(void* block)
 	for (trav = head; trav != NULL; trav=trav->next) { 
 		if (trav->ptr == block)
 		{
-			trav->alloc = 0;
-			return;
+			//trav->alloc = 0;
+			//return;
+			break;
 		}
-		
 	}
 
+	trav->alloc = 0;
+
+	// test if prev block is free
+	if (trav != head && trav->last->alloc == 0) {
+		// merging block
+		trav->size += trav->last->size;
+		trav->ptr = trav->last->ptr;
+		trav->last->last->next = trav;
+
+		struct memoryList* tempHold = trav->last->last;
+		free(trav->last);
+		trav->last = tempHold;
+	}
+
+	// test if next block is free
+	if (trav->next != NULL && trav->next->alloc == 0)
+	{
+		// merging block
+		trav->size += trav->next->size;
+		trav->next->next->last = trav;
+
+		struct memoryList* tempHold = trav->next->next;
+		free(trav->next);
+		trav->next = tempHold;
+	}
+	
 	return;
 }
 
@@ -384,20 +415,13 @@ void try_mymem(int argc, char **argv) {
 	print_memory_status();
 	*/
 
-	// test 3
-
-		void* lastPointer = NULL;
+	// test 2
 		initmem(strat,100);
-		for (int i = 0; i < 100; i++)
-		{
-			void* pointer = mymalloc(1);
-			if ( i > 0 && pointer != (lastPointer+1) )
-			{
-				//printf("Allocation with %s was not sequential at %i; expected %p, actual %p\n", strategy_name(strategy), i,lastPointer+1,pointer);
-				return 1;
-			}
-			lastPointer = pointer;
-		}
+
+		a = mymalloc(10);
+		b = mymalloc(1);
+		myfree(a);
+		c = mymalloc(1);
 
 
 	print_memory();
