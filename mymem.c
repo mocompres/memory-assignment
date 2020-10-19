@@ -56,12 +56,16 @@ void initmem(strategies strategy, size_t sz)
 	if (myMemory != NULL) free(myMemory); /* in case this is not the first time initmem2 is called */
 	
 	/* TODO: release any other memory you were using fo,,r bookkeeping when doing a re-initialization! */
+	// Checking the list has been used before
 	if (head != NULL)
 	{
+		// Using trav as the pointer to the nodes 
 		struct memoryList *trav;
 		for (trav = head; trav->next != NULL; trav=trav->next) {
+			// Releasing the prev node from memory
 			free(trav->last);
 		}
+		// Releasing the last node in the list
 		free(trav);
 	}
 	
@@ -70,14 +74,22 @@ void initmem(strategies strategy, size_t sz)
 	myMemory = malloc(sz);
 	
 	/* TODO: Initialize memory management structure. */
-	head = (struct memoryList*) malloc(sizeof(struct memoryList));
-	head->last = NULL; // ptr to pre
-	head->next = NULL; // ptr to next
+	// Setting up the first node in the list
+	head = (struct memoryList*) malloc(sizeof(struct memoryList)); // Setting up space in the heap
+	// Setting pointer to other node to NULL
+	head->last = NULL; // Pointer to prev node
+	head->next = NULL; // Pointer to next node
+
+	// Since it is the only node it has the whole size of the menory
 	head->size = sz; // size of block
 	head->alloc = 0; // not allocated
-	head->ptr = myMemory;
+	head->ptr = myMemory; // First node in the list.
 	
-	next = head; // next will start as head
+	// Checking if the user choose the correct strategy
+	if ( strategy  != next )
+		printf("Can only do next-fit strategy... Setting up next\n");
+
+	next = head; // next will start as head 
 }
 
 /* Allocate a block of memory with the requested size.
@@ -105,43 +117,49 @@ void *mymalloc(size_t requested)
 	  case Next:
 				printf("Allocating memory\n");
 	  			// find the node
-				trav = next;
+				trav = next; 
 
-	  			while (trav->alloc == 1 && trav->size < requested)
+				// Finding a node in the list which is free and can hold the requested size
+	  			while (trav->alloc != 0 && trav->size < requested)
 				{
+					// Checking if it the end of the list, to stip to the head
 					if (trav->next == NULL)
 						trav = head;
-					else
+					else // Setting trav as the next node
 						trav = trav->next;
 				}  			
-					
-				//struct memoryList *rtnNode = next; 
 
+				// Now trav points to a node which is free and has a size large enough for the requested size
+				// If the node is larger than requested we make a new free node with the remaining size
 				if (trav->size > requested) {
-				// make new node
+					// makeing new node
+					// Allocating space in the heap for the new node
 					struct memoryList *temp = (struct memoryList*) malloc(sizeof(struct memoryList));
-					temp->last = trav;
+
+					// Setting up the node to be placed after trav
+					temp->last = trav; 
 					temp->next = trav->next;
-					temp->size = trav->size - requested;
+					temp->size = trav->size - requested; // the remaining size
 					temp->alloc = 0;
-					temp->ptr = trav->ptr + requested;
+					temp->ptr = trav->ptr + requested; // Moving the pointer to the memory location
 					// setup next node with pre trav->next->last = temp
 					
-					// setting up the allocated node
+					// setting up and updating the allocated node
 					trav->next = temp;
 					trav->size = requested;
 				}
+
+				// Marking trav as allocated
+				trav->alloc = 1;
 				
-				// setting next
+				// Updating next ptr to next mymalloc
 				if (trav->next != NULL)
 					next = trav->next;
 				else 
 					next = head;
-					
-				trav->alloc = 1;
-				
-				//return rtnNode->ptr;
 	  }
+
+	// Returning the assigned memory location for the requested size
 	return trav->ptr;
 }
 
@@ -151,40 +169,48 @@ void myfree(void* block)
 {
 	printf("Deallocating memory\n");
 
+	
 	struct memoryList *trav;
+
+	// Seaching for the block with the memory location to free
 	for (trav = head; trav != NULL; trav=trav->next) { 
 		if (trav->ptr == block)
 		{
-			//trav->alloc = 0;
-			//return;
+			// Once the node has been found we break out of the search
 			break;
 		}
 	}
-
+	// trav is now the node to be freed
 	trav->alloc = 0;
 
-	// test if prev block is free
+	// test if prev node is free to merge
 	if (trav != head && trav->last->alloc == 0) {
-		// merging block
-		trav->size += trav->last->size;
-		trav->ptr = trav->last->ptr;
-		trav->last->last->next = trav;
+		// merging node
 
-		struct memoryList* tempHold = trav->last->last;
-		free(trav->last);
-		trav->last = tempHold;
+		// Setting up pointers from the prev node to be the one before
+		trav->size += trav->last->size; // Setting up the new size
+		trav->ptr = trav->last->ptr; // setting up the pointer to the prev
+		trav->last->last->next = trav; // setting up the pointer
+
+		// Removing the prev pointer and updating possition in the list
+		struct memoryList* tempHold = trav->last->last; // Hold the pointer to the new prev pointer
+		free(trav->last); // removing the node from memory
+		trav->last = tempHold; // setting up the new prev
 	}
 
-	// test if next block is free
+	// test if next block is free to merge
 	if (trav->next != NULL && trav->next->alloc == 0)
 	{
 		// merging block
-		trav->size += trav->next->size;
-		trav->next->next->last = trav;
 
-		struct memoryList* tempHold = trav->next->next;
-		free(trav->next);
-		trav->next = tempHold;
+		// Updateting trav node
+		trav->size += trav->next->size; // Setting up new size
+		trav->next->next->last = trav; // Setting new pointer to the next node
+
+		// Removing node and updating position in list
+		struct memoryList* tempHold = trav->next->next; // Temp hold of pointer to next node
+		free(trav->next); // Removing node from memory
+		trav->next = tempHold; // Setting up the new next 
 	}
 	
 	return;
@@ -200,15 +226,18 @@ void myfree(void* block)
 int mem_holes()
 {
 	
-	int cnt = 0;
+	int cnt = 0; // Holds the count
 
+	// Searching the list from head to tail
 	struct memoryList *trav;
 	for (trav = head; trav != NULL; trav=trav->next) {
+		// Checking if node is free
 		if (trav->alloc == 0) {
 			cnt++;
 		}
 	}
 
+	// Returning the count
 	return cnt;
 	
 }
@@ -216,12 +245,14 @@ int mem_holes()
 /* Get the number of bytes allocated */
 int mem_allocated()
 {
-	int cnt = 0;
+	int cnt = 0; // Holds the total count
 
+	// Searching the list from head to tail
 	struct memoryList *trav;
 	for (trav = head; trav != NULL; trav=trav->next) {
+		// Checking if node is allocated
 		if (trav->alloc == 1) 
-			cnt += trav->size;
+			cnt += trav->size; // Adding size
 	}
 	
 	return cnt;
@@ -230,12 +261,14 @@ int mem_allocated()
 /* Number of non-allocated bytes */
 int mem_free()
 {
-	int cnt = 0;
+	int cnt = 0; // Holds the count
 
+	// Searching the list from head to tail
 	struct memoryList *trav;
 	for (trav = head; trav != NULL; trav=trav->next) {
+		// Checking if the node is free
 		if (trav->alloc == 0) 
-			cnt++;
+			cnt += trav->size;
 	}
 	
 	return cnt;
@@ -244,14 +277,16 @@ int mem_free()
 /* Number of bytes in the largest contiguous area of unallocated memory */
 int mem_largest_free()
 {
-	int size = 0;
-	int largestSize = 0;
+	int size = 0; // Holds the counted size
+	int largestSize = 0; // Hold the largest counted size
 
+	// Searching the list from head to tail
 	struct memoryList *trav;
 	for (trav = head; trav != NULL; trav = trav->next) {
 		if (trav->alloc == 0) {
-			size += trav->size;
-		
+			size += trav->size; // Adding the size
+
+			// Checking if counted size larger
 			if (size > largestSize)
 			{
 				largestSize = size;
@@ -269,11 +304,12 @@ int mem_largest_free()
 /* Number of free blocks smaller than "size" bytes. */
 int mem_small_free(int size)
 {
-	int cnt = 0;
+	int cnt = 0; // Holds the count
 
+	// Seaching the list from head to tail
 	struct memoryList *trav;
 	for (trav = head; trav != NULL; trav = trav->next) {
-		
+		// Checking if the node is free and small than the specified size
 		if (trav->alloc == 0 && trav->size < size)
 		{
 			cnt++;
@@ -285,10 +321,13 @@ int mem_small_free(int size)
 
 char mem_is_alloc(void *ptr)
 {
+	// Seaching the list from head to tail
 	struct memoryList *trav;
 	for (trav = head; trav != NULL; trav=trav->next) { 
+		// checking if the node the given position
 		if (trav->ptr == ptr)
 		{
+			// Returning the alloc status instead of making a if statement with the same result
 			return trav->alloc;
 		}
 	}
