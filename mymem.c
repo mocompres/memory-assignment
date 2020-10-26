@@ -86,8 +86,8 @@ void initmem(strategies strategy, size_t sz)
 	head->ptr = myMemory; // First node in the list.
 	
 	// Checking if the user choose the correct strategy
-	if ( strategy  != next )
-		printf("Can only do next-fit strategy... Setting up next\n");
+	//if ( strategy  != next )
+	//	printf("Can only do next-fit strategy... Setting up next\n");
 
 	next = head; // next will start as head 
 }
@@ -108,30 +108,47 @@ void *mymalloc(size_t requested)
 	  {
 	  case NotSet: 
 	            return NULL;
+				break;
 	  case First:
 	            return NULL;
+				break;
 	  case Best:
 	            return NULL;
+				break;
 	  case Worst:
 	            return NULL;
+				break;
 	  case Next:
 				printf("Allocating memory\n");
 	  			// find the node
 				trav = next; 
-
+				printf("Requested size: %d\n", requested);
 				// Finding a node in the list which is free and can hold the requested size
-	  			while (trav->alloc != 0 && trav->size < requested)
+	  			while (trav->alloc != 0 || trav->size < requested)
 				{
+					//printf("Searching for node...\n");
 					// Checking if it the end of the list, to stip to the head
-					if (trav->next == NULL)
-						trav = head;
-					else // Setting trav as the next node
-						trav = trav->next;
-				}  			
+					if (trav->alloc == 0 && trav->size >= requested) {
+						break;
+					}
+					else {
+						if (trav->next == NULL) {
+							printf("head");
+							trav = head;
+						}
+						else {  // Setting trav as the next node
+							//printf("next");
+							trav = trav->next;
+						} 
+					}	
+				}  	
+				
+					printf("Found a memory with size %d, alloc %d\n", trav->size, trav->alloc);		
 
 				// Now trav points to a node which is free and has a size large enough for the requested size
 				// If the node is larger than requested we make a new free node with the remaining size
 				if (trav->size > requested) {
+					printf("Found node is bigger then requested: %ld\n", requested);
 					// makeing new node
 					// Allocating space in the heap for the new node
 					struct memoryList *temp = (struct memoryList*) malloc(sizeof(struct memoryList));
@@ -147,20 +164,33 @@ void *mymalloc(size_t requested)
 					// setting up and updating the allocated node
 					trav->next = temp;
 					trav->size = requested;
+					trav->alloc = 1;
+				} 
+				else if (trav->size == requested) {
+					printf("It has the requested size:  %ld\n", requested);
+					// Marking trav as allocated
+					trav->alloc = 1;	
 				}
 
-				// Marking trav as allocated
-				trav->alloc = 1;
 				
 				// Updating next ptr to next mymalloc
+				printf("Updating next \n");
+			//	next = trav;
 				if (trav->next != NULL)
 					next = trav->next;
 				else 
 					next = head;
-	  }
 
-	// Returning the assigned memory location for the requested size
-	return trav->ptr;
+					// Returning the assigned memory location for the requested size
+				return trav->ptr;
+				break;
+
+			default:
+				break;
+	  }
+	  
+	return NULL;
+
 }
 
 
@@ -173,7 +203,7 @@ void myfree(void* block)
 	struct memoryList *trav;
 
 	// Seaching for the block with the memory location to free
-	for (trav = head; trav != NULL; trav=trav->next) { 
+	for (trav = head; trav != NULL; trav = trav->next) { 
 		if (trav->ptr == block)
 		{
 			// Once the node has been found we break out of the search
@@ -186,11 +216,18 @@ void myfree(void* block)
 	// test if prev node is free to merge
 	if (trav != head && trav->last->alloc == 0) {
 		// merging node
+		printf("Merging node: left\n");
 
+		// Updateing head
+		if (trav->last == head) {
+			head = trav;
+		}
 		// Setting up pointers from the prev node to be the one before
 		trav->size += trav->last->size; // Setting up the new size
 		trav->ptr = trav->last->ptr; // setting up the pointer to the prev
-		trav->last->last->next = trav; // setting up the pointer
+
+		if(trav->last->last != NULL)
+			trav->last->last->next = trav; // setting up the pointer
 
 		// Removing the prev pointer and updating possition in the list
 		struct memoryList* tempHold = trav->last->last; // Hold the pointer to the new prev pointer
@@ -202,17 +239,21 @@ void myfree(void* block)
 	if (trav->next != NULL && trav->next->alloc == 0)
 	{
 		// merging block
-
+		printf("Merging node: right\n");
 		// Updateting trav node
 		trav->size += trav->next->size; // Setting up new size
-		trav->next->next->last = trav; // Setting new pointer to the next node
+		
+		if(trav->next->next != NULL)
+			trav->next->next->last = trav; // Setting new pointer to the next node
 
 		// Removing node and updating position in list
 		struct memoryList* tempHold = trav->next->next; // Temp hold of pointer to next node
 		free(trav->next); // Removing node from memory
 		trav->next = tempHold; // Setting up the new next 
 	}
-	
+
+	//print_memory();
+
 	return;
 }
 
@@ -455,12 +496,11 @@ void try_mymem(int argc, char **argv) {
 	*/
 
 	// test 2
-		initmem(strat,100);
-
-		a = mymalloc(10);
-		b = mymalloc(1);
-		myfree(a);
-		c = mymalloc(1);
+		initmem(strat,100000);
+		
+		for (int i = 0; i < 100; i++) {
+			mymalloc(1000);
+		}
 
 
 	print_memory();
