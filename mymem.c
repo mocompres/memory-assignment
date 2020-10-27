@@ -49,16 +49,17 @@ void initmem(strategies strategy, size_t sz)
 
     /* all implementations will need an actual block of memory to use */
     mySize = sz;
-    //printf("Freeing memory\n");
+
     if (myMemory != NULL)
         free(myMemory); /* in case this is not the first time initmem2 is called */
 
-    /* TODO: release any other memory you were using fo,,r bookkeeping when doing a re-initialization! */
-    // Checking the list has been used before
+    // Checking if the list has been used before
     if (head != NULL)
     {
         // Using trav as the pointer to the nodes
         memoryList *trav;
+
+        // Searching throug the list
         for (trav = head; trav->next != NULL; trav = trav->next)
         {
             // Releasing the prev node from memory
@@ -68,12 +69,12 @@ void initmem(strategies strategy, size_t sz)
         free(trav);
     }
 
-    // printf("Setup memory\n");
+    // Seting up new memory
     myMemory = malloc(sz);
 
-    /* TODO: Initialize memory management structure. */
     // Setting up the first node in the list
     head = (memoryList *)malloc(sizeof(memoryList)); // Setting up space in the heap
+
     // Setting pointer to other node to NULL
     head->last = NULL; // Pointer to prev node
     head->next = NULL; // Pointer to next node
@@ -86,14 +87,10 @@ void initmem(strategies strategy, size_t sz)
     next = head; // next will start as head
 }
 
-/* Allocate a block of memory with the requested size.
- *  If the requested block is not available, mymalloc returns NULL.
- *  Otherwise, it returns a pointer to the newly allocated block.
- *  Restriction: requested >= 1 
- */
-
+// Assigning the requested memory size
 void *mymalloc(size_t requested)
 {
+    // travpointer the mymalloc functions
     memoryList *trav;
 
     assert((int)myStrategy > 0);
@@ -109,14 +106,14 @@ void *mymalloc(size_t requested)
     case Worst:
         return NULL;
     case Next:
-        // printf("Allocating memory\n");
-        // find the node
+
+        // set the trav node to the next node
         trav = next;
 
         // Finding a node in the list which is free and can hold the requested size
         while (trav->alloc != 0 && trav->size <= requested)
         {
-            // Checking if it the end of the list, to stip to the head
+            // Checking if it the end of the list, to jump to the head
             if (trav->next == NULL)
                 trav = head;
             else // Setting trav as the next node
@@ -131,17 +128,18 @@ void *mymalloc(size_t requested)
             // Allocating space in the heap for the new node
             memoryList *temp = (memoryList *)malloc(sizeof(memoryList));
 
-            // Setting up the node to be placed after trav
+            // checking if the new node will be the last in the list
             if (trav->next == NULL)
             {
+                // Setting the new node as the last
                 temp->next = NULL;
             }
 
-            temp->last = trav;
+            // setting the properties for the new node
+            temp->last = trav;                   // setting the prev node
             temp->size = trav->size - requested; // the remaining size
-            temp->alloc = 0;
-            temp->ptr = trav->ptr + requested; // Moving the pointer to the memory location
-            // setup next node with pre trav->next->last = temp
+            temp->alloc = 0;                     // setting the new node as free
+            temp->ptr = trav->ptr + requested;   // Moving the pointer to the memory location
 
             // setting up and updating the allocated node
             trav->next = temp;
@@ -162,70 +160,52 @@ void *mymalloc(size_t requested)
     return trav->ptr;
 }
 
-/* Frees a block of memory previously allocated by mymalloc. */
-
+// freeing the block of memory
 void myfree(void *block)
 {
-    //printf("Deallocating memory\n");
-
+    // checking if a address where sent
     if (block == NULL)
     {
-        printf("Head is null\n");
         return;
     }
 
+    // setting trav to head
     struct memoryList *trav = head;
-    //printf("Found head\n");
+
     // Seaching for the block with the memory location to free
     do
     {
-        //printf("Looking...\n");
         if (trav->ptr == block)
         {
-            //trav->alloc = 0;
             trav->alloc = 0;
-            //printf("Unalloced\n");
             // Once the node has been found we break out of the search
             break;
         }
-
+        // setting trav to the next node
         trav = trav->next;
 
     } while (trav != NULL);
 
-    //printf("done\n");
-
+    // cheing if a node where found
     if (trav == NULL)
     {
         return;
     }
-    // Searching for node
-    /*
-    do
-    {
-        if (trav->ptr == block)
-        {
-            trav->alloc = 0;
-            break;
-        }
 
-        trav = trav->next;
-
-    } while (trav != NULL); */
-
-    // trav is now the node to be freed
-
+    // Checking if the prev node is free
     if (trav->last != NULL)
     {
         if (trav->last->alloc == 0)
         {
-            //printf("Merching Left\n");
             // merging node
+            // holds the node to delete from memory
             memoryList *delNode = trav;
-            trav = trav->last;
-            // Setting up pointers from the prev node to be the one before
+            trav = trav->last; // setting trav which is going to be updated
+
+            // Setting up properties from the delete node
             trav->size += delNode->size; // Setting up the new size
 
+            // setting up pointer
             if (delNode->next == NULL)
                 trav->next = NULL;
             else
@@ -234,6 +214,7 @@ void myfree(void *block)
                 trav->next->last = trav;
             }
 
+            // updating next if needed
             if (next == delNode)
             {
                 if (delNode->next == NULL)
@@ -245,25 +226,23 @@ void myfree(void *block)
                     next = trav;
                 }
             }
-            // Removing the prev pointer and updating possition in the list
-            free(delNode); // removing the node from memory						 // setting up the new prev
+
+            free(delNode); // removing the node from memory
         }
     }
 
-    // test if next block is free to merge
-
+    // Checking if the prev node is free
     if (trav->next != NULL)
     {
         if (trav->next->alloc == 0)
         {
-
-            //printf("Merching right\n");
             // merging block
-            memoryList *delNode = trav->next;
+            memoryList *delNode = trav->next; // the node to delete
 
-            // Updateting trav node
+            // Updating trav node
             trav->size += delNode->size; // Setting up new size
-            //printf("1. Done\n");
+
+            // updating pointers
             if (delNode->next == NULL)
             {
                 trav->next = NULL;
@@ -273,8 +252,8 @@ void myfree(void *block)
                 trav->next = delNode->next;
                 trav->next->last = trav;
             }
-            //printf("2. Done\n");
 
+            // updating next if needed
             if (next == delNode)
             {
                 if (delNode->next == NULL)
@@ -286,20 +265,13 @@ void myfree(void *block)
                     next = trav;
                 }
             }
-            //printf("3. Done\n");
+
             // Removing node and updating position in list
-            free(delNode); // Setting up the new next
+            free(delNode);
         }
     }
     return;
 }
-/*
-
-/****** Memory status/property functions ******
- * Implement these functions.
- * Note that when refered to "memory" here, it is meant that the 
- * memory pool this module manages via initmem/mymalloc/myfree. 
- */
 
 /* Get the number of contiguous areas of free space in memory. */
 int mem_holes()
@@ -420,11 +392,6 @@ char mem_is_alloc(void *ptr)
     return 0;
 }
 
-/* 
- * Feel free to use these functions, but do not modify them.  
- * The test code uses them, but you may find them useful.
- */
-
 //Returns a pointer to the memory pool.
 void *mem_pool()
 {
@@ -480,27 +447,19 @@ strategies strategyFromString(char *strategy)
     }
 }
 
-/* 
- * These functions are for you to modify however you see fit.  These will not
- * be used in tests, but you may find them useful for debugging.
- */
-
 /* Use this function to print out the current contents of memory. */
 void print_memory()
 {
     memoryList *trav;
     for (trav = head; trav != NULL; trav = trav->next)
     {
+        // printing if memory block is in use or not
         printf("%s->", (trav->alloc == 0) ? "Free" : "Alloced");
     }
     printf("\n");
     return;
 }
 
-/* Use this function to track memory allocation performance.  
- * This function does not depend on your implementation, 
- * but on the functions you wrote above.
- */
 void print_memory_status()
 {
     printf("%d out of %d bytes allocated.\n", mem_allocated(), mem_total());
@@ -521,24 +480,7 @@ void try_mymem(int argc, char **argv)
     else
         strat = First;
 
-    /* A simple example.  
-	   Each algorithm should produce a different layout. */
-    /* test 1
-	initmem(strat,500);
-	
-	a = mymalloc(100);
-	b = mymalloc(100);
-	c = mymalloc(100);
-	myfree(b);
-	d = mymalloc(50);
-	myfree(a);
-	e = mymalloc(25);
-	
-	print_memory();
-	print_memory_status();
-	*/
-
-    // test 2
+    /*    // test 2
     initmem(strat, 100);
 
     a = mymalloc(10);
@@ -547,5 +489,5 @@ void try_mymem(int argc, char **argv)
     c = mymalloc(1);
 
     print_memory();
-    print_memory_status();
+    print_memory_status(); */
 }
